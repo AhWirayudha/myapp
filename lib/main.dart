@@ -11,7 +11,18 @@ class AnimalKidGamesApp extends StatelessWidget {
     return MaterialApp(
       title: 'Animal Kid Games',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.purple,
+        colorScheme: ColorScheme.fromSwatch().copyWith(
+          secondary: Colors.orange,
+        ),
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.white, backgroundColor: Colors.orange,
+            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            textStyle: TextStyle(fontSize: 18),
+          ),
+        ),
       ),
       home: MainMenu(),
     );
@@ -38,6 +49,7 @@ class MainMenu extends StatelessWidget {
               },
               child: Text('Animal Guessing Game'),
             ),
+            SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -68,6 +80,9 @@ class _AnimalGuessingGameState extends State<AnimalGuessingGame> {
     'assets/lion.png'
   ];
   late int correctAnswerIndex;
+  int score = 0;
+  int totalQuestions = 0;
+  String message = '';
 
   @override
   void initState() {
@@ -77,17 +92,28 @@ class _AnimalGuessingGameState extends State<AnimalGuessingGame> {
 
   void setNewQuestion() {
     setState(() {
-      correctAnswerIndex = Random().nextInt(animalNames.length);
+      if (totalQuestions < animalNames.length) {
+        correctAnswerIndex = Random().nextInt(animalNames.length);
+        message = '';
+      } else {
+        message = 'Game Over! Your final score is $score/${animalNames.length}.';
+      }
     });
   }
 
   void checkAnswer(String selectedAnswer) {
-    final snackBar = SnackBar(
-      content: Text(
-          selectedAnswer == animalNames[correctAnswerIndex] ? 'Correct!' : 'Wrong! Try again.'),
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    setNewQuestion();
+    if (selectedAnswer == animalNames[correctAnswerIndex]) {
+      setState(() {
+        message = 'Correct!';
+        score++;
+        totalQuestions++;
+      });
+    } else {
+      setState(() {
+        message = 'Wrong! Try again.';
+        totalQuestions++;
+      });
+    }
   }
 
   @override
@@ -100,19 +126,38 @@ class _AnimalGuessingGameState extends State<AnimalGuessingGame> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              animalImages[correctAnswerIndex],
-              height: 200,
-            ),
-            ...animalNames.map((name) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
+            if (totalQuestions < animalNames.length)
+              Column(
+                children: [
+                  Image.asset(
+                    animalImages[correctAnswerIndex],
+                    height: 200,
+                  ),
+                  ...animalNames.map((name) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: ElevatedButton(
+                        onPressed: () => checkAnswer(name),
+                        child: Text(name),
+                      ),
+                    );
+                  }).toList(),
+                ],
+              )
+            else
+              Text(
+                message,
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            if (message.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20.0),
                 child: ElevatedButton(
-                  onPressed: () => checkAnswer(name),
-                  child: Text(name),
+                  onPressed: setNewQuestion,
+                  child: Text('Next'),
                 ),
-              );
-            }).toList(),
+              ),
           ],
         ),
       ),
