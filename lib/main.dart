@@ -18,7 +18,8 @@ class AnimalKidGamesApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.white, backgroundColor: Colors.orange,
+            backgroundColor: Colors.orange,
+            foregroundColor: Colors.white,
             padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             textStyle: TextStyle(fontSize: 18),
           ),
@@ -80,9 +81,11 @@ class _AnimalGuessingGameState extends State<AnimalGuessingGame> {
     'assets/lion.png'
   ];
   late int correctAnswerIndex;
+  late int selectedAnswerIndex;
   int score = 0;
   int totalQuestions = 0;
   String message = '';
+  bool gameOver = false;
 
   @override
   void initState() {
@@ -94,26 +97,38 @@ class _AnimalGuessingGameState extends State<AnimalGuessingGame> {
     setState(() {
       if (totalQuestions < animalNames.length) {
         correctAnswerIndex = Random().nextInt(animalNames.length);
+        selectedAnswerIndex = -1;
         message = '';
+        gameOver = false;
       } else {
         message = 'Game Over! Your final score is $score/${animalNames.length}.';
+        gameOver = true;
       }
     });
   }
 
-  void checkAnswer(String selectedAnswer) {
-    if (selectedAnswer == animalNames[correctAnswerIndex]) {
-      setState(() {
+  void checkAnswer(int index) {
+    setState(() {
+      selectedAnswerIndex = index;
+      if (animalNames[index] == animalNames[correctAnswerIndex]) {
         message = 'Correct!';
         score++;
-        totalQuestions++;
-      });
-    } else {
-      setState(() {
+      } else {
         message = 'Wrong! Try again.';
-        totalQuestions++;
+      }
+      totalQuestions++;
+      // Automatically move to the next question after a short delay
+      Future.delayed(Duration(seconds: 2), () {
+        if (totalQuestions < animalNames.length) {
+          setNewQuestion();
+        } else {
+          setState(() {
+            message = 'Game Over! Your final score is $score/${animalNames.length}.';
+            gameOver = true;
+          });
+        }
       });
-    }
+    });
   }
 
   @override
@@ -126,18 +141,25 @@ class _AnimalGuessingGameState extends State<AnimalGuessingGame> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (totalQuestions < animalNames.length)
+            if (!gameOver)
               Column(
                 children: [
                   Image.asset(
                     animalImages[correctAnswerIndex],
                     height: 200,
                   ),
-                  ...animalNames.map((name) {
+                  ...animalNames.asMap().entries.map((entry) {
+                    int idx = entry.key;
+                    String name = entry.value;
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: ElevatedButton(
-                        onPressed: () => checkAnswer(name),
+                        onPressed: () => checkAnswer(idx),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: idx == selectedAnswerIndex
+                              ? (idx == correctAnswerIndex ? Colors.green : Colors.red)
+                              : null,
+                        ),
                         child: Text(name),
                       ),
                     );
@@ -150,12 +172,21 @@ class _AnimalGuessingGameState extends State<AnimalGuessingGame> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-            if (message.isNotEmpty)
+            if (gameOver)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20.0),
                 child: ElevatedButton(
-                  onPressed: setNewQuestion,
-                  child: Text('Next'),
+                  onPressed: () {
+                    setState(() {
+                      score = 0;
+                      totalQuestions = 0;
+                      setNewQuestion();
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                  ),
+                  child: Text('Restart'),
                 ),
               ),
           ],
@@ -179,7 +210,7 @@ class _FixAnimalNameGameState extends State<FixAnimalNameGame> {
     'assets/lion.png'
   ];
   final List<String> correctLetters = ['a', 'o', 'e', 'i'];
-  final List<List<String>> optionsList = [
+  List<List<String>> optionsList = [
     ['a', 'o', 'e'],
     ['o', 'a', 'e'],
     ['e', 'a', 'o'],
@@ -187,27 +218,44 @@ class _FixAnimalNameGameState extends State<FixAnimalNameGame> {
   ];
   late int animalIndex;
   String currentAnswer = '';
+  int selectedOptionIndex = -1;
 
   @override
   void initState() {
     super.initState();
+    randomizeOptions();
     setNewQuestion();
+  }
+
+  void randomizeOptions() {
+    setState(() {
+      optionsList = optionsList.map((options) {
+        options.shuffle();
+        return options;
+      }).toList();
+    });
   }
 
   void setNewQuestion() {
     setState(() {
       animalIndex = Random().nextInt(animalNames.length);
       currentAnswer = '';
+      selectedOptionIndex = -1;
     });
   }
 
-  void checkAnswer(String selectedLetter) {
+  void checkAnswer(int optionIndex) {
     setState(() {
-      if (selectedLetter == correctLetters[animalIndex]) {
+      selectedOptionIndex = optionIndex;
+      if (optionsList[animalIndex][optionIndex] == correctLetters[animalIndex]) {
         currentAnswer = 'Correct! The answer is ${animalNames[animalIndex]}.';
       } else {
         currentAnswer = 'Wrong! Try again.';
       }
+      // Automatically move to the next question after a short delay
+      Future.delayed(Duration(seconds: 2), () {
+        setNewQuestion();
+      });
     });
   }
 
@@ -232,11 +280,18 @@ class _FixAnimalNameGameState extends State<FixAnimalNameGame> {
             SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: optionsList[animalIndex].map((option) {
+              children: optionsList[animalIndex].asMap().entries.map((entry) {
+                int idx = entry.key;
+                String option = entry.value;
                 return Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: ElevatedButton(
-                    onPressed: () => checkAnswer(option),
+                    onPressed: () => checkAnswer(idx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: idx == selectedOptionIndex
+                          ? (option == correctLetters[animalIndex] ? Colors.green : Colors.red)
+                          : null,
+                    ),
                     child: Text(option),
                   ),
                 );
@@ -246,11 +301,6 @@ class _FixAnimalNameGameState extends State<FixAnimalNameGame> {
             Text(
               currentAnswer,
               style: TextStyle(fontSize: 18),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: setNewQuestion,
-              child: Text('Next'),
             ),
           ],
         ),
